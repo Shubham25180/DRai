@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DrAI - Your Personal AI Tutor for Medicine</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+
+    <!-- Header & Navigation -->
+    <header class="main-header">
+        <div class="container">
+            <div class="logo">
+                <img src="https://placehold.co/40x40/28a745/FFFFFF?text=AI" alt="DrAI Logo"> <!-- Placeholder Logo -->
+                <span>DrAI</span>
+            </div>
+            <nav>
+                <a href="#vision" class="nav-item">The Vision</a>
+                <a href="#features" class="nav-item">Features</a>
+                <a href="#testimonials" class="nav-item">Testimonials</a>
+            </nav>
+            <div class="header-actions">
+                <!-- This will eventually link to the Gradio app -->
+                <a href="http://127.0.0.1:7860" class="btn btn-primary" target="_blank">Launch Tutor</a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Vision Section -->
+    <section id="vision" class="vision-section">
+        <div class="container">
+            <div class="vision-content">
+                <h2 class="section-subtitle">THE VISION</h2>
+                <h1 class="section-title">
+                    Imagine a Personal<br>
+                    <span class="highlight">AI tutor</span> for <span class="highlight">Every Medico.</span>
+                </h1>
+                <p class="section-description">
+                    Guides your <strong>learning</strong>. Tracks your growth. <strong>Always On.</strong><br>
+                    Now, mastering medicine is no longer a solo journey.
+                </p>
+                <a href="http://127.0.0.1:7860" class="btn btn-large btn-success" target="_blank">Start Learning -
+                    Free</a>
+            </div>
+            <div class="vision-image">
+                <!-- Placeholder for the robot mascot image -->
+                <img src="https://placehold.co/500x500/E2E8F0/334155?text=AI+Mascot" alt="AI Tutor Mascot">
+            </div>
+        </div>
+    </section>
+
+    <!-- How It Works Section -->
+    <section id="features" class="features-section">
+        <div class="container">
+            <div class="features-image">
+                <img src="https://placehold.co/500x500/E2E8F0/334155?text=Student+Studying" alt="Student using DrAI">
+            </div>
+            <div class="features-content">
+                <h2 class="section-subtitle">THE POWER OF PERSONALISED LEARNING</h2>
+                <h1 class="section-title">Go Beyond Rote.<br>Reach <span class="highlight">Real Understanding.</span>
+                </h1>
+                <p class="section-description">How DrAI Learns With You:</p>
+                <ul class="feature-list">
+                    <li><span class="icon">💡</span> <strong>Learns you, adapts instantly:</strong> Adaptive paths just
+                        for you.</li>
+                    <li><span class="icon">🔁</span> <strong>Reinforces what matters:</strong> Spaced repetition &
+                        active recall.</li>
+                    <li><span class="icon">🧠</span> <strong>Builds clinical thinking:</strong> Critical reasoning &
+                        disease mapping.</li>
+                    <li><span class="icon">💬</span> <strong>Supports you 24/7:</strong> Ask Medsy AI tutor.</li>
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    <!-- Core Pillars Section -->
+    <section class="pillars-section">
+        <div class="container">
+            <div class="pillar-card">
+                <h3>MBBS</h3>
+                <p>Ace your MBBS prep with smart notes, deep dives, and power-packed exam questions - all in one place!
+                </p>
+                <span class="status-tag">Coming Soon</span>
+            </div>
+            <div class="pillar-card">
+                <h3>NEET PG</h3>
+                <p>Build your FMGE mastery with smart tools, sharp content, and focused revision!</p>
+                <span class="status-tag">Coming Soon</span>
+            </div>
+            <div class="pillar-card">
+                <h3>FMGE</h3>
+                <p>Supercharge your PG studies with next-gen tools and curated practice sets!</p>
+                <a href="http://127.0.0.1:7860" class="btn btn-dark" target="_blank">Explore Now</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Testimonials Section -->
+    <section id="testimonials" class="testimonials-section">
+        <div class="container">
+            <h2 class="section-subtitle text-center">WHAT STUDENTS SAY ABOUT DrAI</h2>
+            <h1 class="section-title text-center">Trusted by <span class="highlight">Future Doctors.</span></h1>
+            <div class="testimonial-grid">
+                <div class="testimonial-card main-testimonial">
+                    <p class="quote">"Preparing for exams has never been easier! DrAI's instant answers and
+                        well-organized notes provide exactly what I need to revise efficiently. The visual aids and
+                        clinical insights help bridge the gap between theory and practice. It's like having a 24/7 study
+                        partner—absolutely a game-changer!"</p>
+                    <div class="author">
+                        <img src="https://placehold.co/50x50/334155/FFFFFF?text=H" alt="H. Karan">
+                        <div class="author-info">
+                            <strong>H. Karan</strong>
+                            <span>Sri Manakula Vinayagar Medical College</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="testimonial-card">
+                    <div class="author">
+                        <img src="https://placehold.co/50x50/334155/FFFFFF?text=S" alt="S. Adhishrinan">
+                        <div class="author-info">
+                            <strong>S. Adhishrinan</strong>
+                            <span>4th Year MBBS</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="testimonial-card">
+                    <div class="author">
+                        <img src="https://placehold.co/50x50/334155/FFFFFF?text=S" alt="S. Kishore">
+                        <div class="author-info">
+                            <strong>S. Kishore</strong>
+                            <span>4th Year MBBS</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- FAQ Section -->
+    <section id="faq" class="faq-section">
+        <div class="container">
+            <h2 class="section-subtitle text-center">FAQs</h2>
+            <h1 class="section-title text-center">Everything You <span class="highlight">Need to Know!</span></h1>
+            <div class="faq-grid">
+                <details class="faq-item">
+                    <summary>What is the StudyNotes feature in DrAI?</summary>
+                    <p>The StudyNotes feature allows you to generate comprehensive notes on any medical topic instantly,
+                        with varying levels of detail to suit your study needs.</p>
+                </details>
+                <details class="faq-item">
+                    <summary>Are there visual aids in StudyNotes, like diagrams or charts?</summary>
+                    <p>Currently, the notes are text-based. However, we are actively working on incorporating visual
+                        aids like diagrams, charts, and illustrations in a future update.</p>
+                </details>
+                <details class="faq-item">
+                    <summary>How does the mock test in DrAI help with exam preparation?</summary>
+                    <p>The mock test feature allows you to take customized quizzes on specific topics, helping you
+                        practice active recall, identify weak spots, and get used to the exam format.</p>
+                </details>
+                <details class="faq-item">
+                    <summary>Is DrAI suitable for self-study?</summary>
+                    <p>Absolutely. DrAI is designed to be a 24/7 AI tutor, providing instant doubt clearance, notes, and
+                        mock tests, making it a perfect companion for self-study.</p>
+                </details>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="main-footer-bottom">
+        <div class="container">
+            <div class="logo">
+                <img src="https://placehold.co/40x40/28a745/FFFFFF?text=AI" alt="DrAI Logo">
+                <span>DrAI</span>
+            </div>
+            <p>&copy; 2024 DrAI. All Rights Reserved. Built with ❤️ for future doctors.</p>
+            <div class="social-links">
+                <a href="#">Twitter</a>
+                <a href="#">LinkedIn</a>
+            </div>
+        </div>
+    </footer>
+
+</body>
+
+</html>
