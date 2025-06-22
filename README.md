@@ -698,3 +698,189 @@ This project is open source and available under the MIT License.
 #### **`gradio.exceptions.Error: Data incompatible with messages format`**
 - **Symptom:** The chat interface shows an error after you ask a question.
 - **Solution:** This was caused by an update in Gradio's Chatbot component. It has been fixed by updating the chat handling functions to use the new required data format (`{"role": "user", ...}`). 
+
+## 🌟 Features
+
+- **🤖 AI-Powered Doubt Clearance**: Get instant answers to medical questions
+- **📝 Smart Notes Generator**: Generate comprehensive notes for any medical topic
+- **📊 Interactive Mock Tests**: Practice with topic-specific MCQs
+- **💪 Motivation System**: Daily motivational quotes and study tips
+- **🎯 NEET-PG Focused**: Content specifically tailored for NEET-PG preparation
+
+## 🚀 Quick Start
+
+### Local Installation
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/Shubham25180/DRai.git
+   cd DRai
+   ```
+
+2. **Install dependencies**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+3. **Run the application**
+   ```bash
+   python app.py
+   ```
+
+4. **Access the application**
+   - Open your browser and go to `http://localhost:7860`
+   - Or use the public link provided by Gradio
+
+## 🌐 Online Deployment Options
+
+### Option 1: Hugging Face Spaces (Recommended - Free)
+
+1. **Create a Hugging Face account** at [huggingface.co](https://huggingface.co)
+
+2. **Create a new Space**
+   - Go to your profile → "New Space"
+   - Choose "Gradio" as the SDK
+   - Set visibility to "Public"
+
+3. **Upload your files**
+   - Upload all Python files, requirements.txt, and data files
+   - Make sure `app.py` is your main file
+
+4. **Deploy**
+   - The space will automatically build and deploy your app
+   - Your app will be available at `https://huggingface.co/spaces/YOUR_USERNAME/YOUR_SPACE_NAME`
+
+### Option 2: Streamlit Cloud (Alternative - Free)
+
+1. **Create a Streamlit version**
+   ```python
+   # Create streamlit_app.py
+   import streamlit as st
+   from app import DrAITutor, create_interface
+   
+   st.title("🧠 DrAI Medical Tutor")
+   # Add your Streamlit interface here
+   ```
+
+2. **Deploy to Streamlit Cloud**
+   - Push your code to GitHub
+   - Go to [share.streamlit.io](https://share.streamlit.io)
+   - Connect your GitHub repository
+   - Deploy
+
+### Option 3: Railway (Paid but Reliable)
+
+1. **Create Railway account** at [railway.app](https://railway.app)
+
+2. **Connect your GitHub repository**
+
+3. **Configure deployment**
+   - Set build command: `pip install -r requirements.txt`
+   - Set start command: `python app.py`
+
+4. **Deploy**
+   - Railway will automatically deploy your app
+   - Get a public URL for your application
+
+### Option 4: Heroku (Alternative)
+
+1. **Create Heroku account** and install Heroku CLI
+
+2. **Create Procfile**
+   ```
+   web: python app.py
+   ```
+
+3. **Deploy**
+   ```bash
+   heroku create your-app-name
+   git push heroku main
+   ```
+
+## 📁 Project Structure
+
+```
+DRai/
+├── app.py                 # Main application
+├── app_enhanced.py        # Enhanced version with more features
+├── demo.py               # Demo version for testing
+├── demo_enhanced.py      # Enhanced demo
+├── model_utils.py        # Model management utilities
+├── utils.py              # Utility functions
+├── motivation.py         # Motivation system
+├── data_preparation.py   # Dataset preparation tools
+├── validate_dataset.py   # Dataset validation
+├── test_enhanced.py      # Testing suite
+├── requirements.txt      # Python dependencies
+├── mock_questions.json   # Mock test questions
+├── README.md            # This file
+├── data/                # Data files
+│   ├── dataset_template.csv
+│   ├── starter_dataset.jsonl
+│   └── training_dataset.jsonl
+└── fine_tuning/         # Fine-tuning scripts
+    ├── train.py
+    ├── inference.py
+    └── DrAI_Tutor_Fine_Tuning.ipynb
+```
+
+## 🔧 Configuration
+
+### Model Selection
+- **Base Model**: Uses DialoGPT-medium for general responses
+- **Fine-tuned Model**: Enhanced with medical knowledge (requires training)
+
+### Customization
+- Add your own mock questions to `mock_questions.json`
+- Modify prompts in `utils.py`
+- Customize UI styling in the CSS sections
+
+## 📊 Usage Examples
+
+### Doubt Clearance
+```
+Question: "What are the symptoms of myocardial infarction?"
+Response: AI-generated comprehensive answer with symptoms, diagnosis, and treatment
+```
+
+### Notes Generation
+```
+Topic: "Types of Shock"
+Output: Structured notes covering hypovolemic, cardiogenic, distributive, and obstructive shock
+```
+
+### Mock Tests
+- Select topic (Cardiology, Pharmacology, etc.)
+- Choose number of questions (1-10)
+- Answer MCQs and get detailed feedback
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
+
+## 📝 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🙏 Acknowledgments
+
+- Built with [Gradio](https://gradio.app/) for the web interface
+- Powered by [Hugging Face Transformers](https://huggingface.co/transformers/)
+- Medical knowledge base from various medical resources
+- Special thanks to the NEET-PG community for feedback and suggestions
+
+## 📞 Support
+
+- **Issues**: Report bugs and feature requests on GitHub
+- **Discussions**: Join discussions for questions and ideas
+- **Email**: Contact for business inquiries
+
+---
+
+**Built with ❤️ for NEET-PG aspirants**
+
+*Empowering medical students with AI-driven education* 

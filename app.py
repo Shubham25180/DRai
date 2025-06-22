@@ -402,8 +402,10 @@ if __name__ == "__main__":
     interface = create_interface()
     # Launch the interface with specific settings
     interface.launch(
-        server_name="localhost",  # Use localhost for local access
+        server_name="0.0.0.0",  # Allow external connections
         server_port=7860,  # Port number
         share=True,  # Enable sharing (creates public link)
-        show_error=True  # Show detailed error messages
+        show_error=True,  # Show detailed error messages
+        prevent_thread_lock=True,  # Prevent blocking
+        show_api=False  # Hide API docs for cleaner interface
     ) 

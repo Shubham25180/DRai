@@ -290,7 +290,6 @@ def create_demo_interface():
     # Create Gradio interface with custom styling
     with gr.Blocks(
         title="DrAI Medical Tutor - Enhanced Demo",
-        theme=gr.themes.Soft(),
         css="""
         .gradio-container {
             max-width: 1400px !important;
@@ -427,8 +426,9 @@ if __name__ == "__main__":
     interface = create_demo_interface()
     interface.launch(
         server_name="localhost",
-        server_port=7862,
+        server_port=7866,
         share=False,
         show_error=True,
-        prevent_thread_lock=True
+        prevent_thread_lock=True,
+        show_api=False
     ) 
