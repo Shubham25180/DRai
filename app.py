@@ -16,396 +16,276 @@ import torch
 # Import Hugging Face transformers for AI model operations
 from transformers import AutoTokenizer, AutoModelForCausalLM
 # Import utility functions from our custom utils module
-from utils import create_doubt_prompt, create_notes_prompt, create_mcq_prompt, get_motivational_quotes
+from utils import (
+    create_doubt_prompt, create_notes_prompt, get_motivational_quote, 
+    create_mock_test_prompt, setup_global_logger
+)
+from model_utils import ModelManager
+import logging
+import sys
 
-class DrAITutor:
-    def __init__(self):
-        # Initialize the AI model as None (will be loaded later)
-        self.model = None
-        # Initialize the tokenizer as None (will be loaded later)
-        self.tokenizer = None
-        # Load mock questions from JSON file for practice tests
-        self.mock_questions = self.load_mock_questions()
-        # Initialize current test as None (no active test)
-        self.current_test = None
-        # Initialize dictionary to store test answers
-        self.test_answers = {}
-        
-    def load_mock_questions(self) -> Dict[str, List[Dict]]:
-        """Load mock questions from JSON file"""
-        try:
-            # Open and read the mock questions JSON file
-            with open('mock_questions.json', 'r') as f:
-                # Parse JSON content and return as dictionary
-                return json.load(f)
-        except FileNotFoundError:
-            # If file not found, print warning and return empty dictionary
-            print("Warning: mock_questions.json not found. Using empty database.")
-            return {}
-    
-    def load_model(self, model_name: str = "microsoft/DialoGPT-medium"):
-        """Load the AI model (using DialoGPT as fallback for demo)"""
-        try:
-            # Print loading message to console
-            print("🔄 Loading AI model...")
-            # Load the tokenizer from Hugging Face model hub
-            self.tokenizer = AutoTokenizer.from_pretrained(model_name)
-            # Load the model from Hugging Face model hub
-            self.model = AutoModelForCausalLM.from_pretrained(model_name)
+# ======================================================================================
+# GLOBAL SETUP
+# ======================================================================================
+
+# 1. Configure the global logger. This is the first and most important step.
+setup_global_logger()
+logger = logging.getLogger(__name__)
+
+# 2. Define application constants.
+logger.info("Defining application constants.")
+MOCK_QUESTIONS_FILE = "mock_questions.json"
+
+# 3. Initialize the AI ModelManager. This will trigger the model loading.
+logger.info("--- Initializing ModelManager. This will begin the AI model loading process. ---")
+model_manager = ModelManager()
+model_loaded = model_manager.load_base_model() # This loads BioMistral-7B by default.
+
+if not model_loaded:
+    logger.critical("Failed to load the AI model. The application's AI features will be unavailable.")
+else:
+    logger.info("--- ModelManager initialization complete. ---")
+
+# ======================================================================================
+# DATA LOADING FUNCTION
+# ======================================================================================
+
+def load_mock_questions() -> list:
+    """Loads and validates mock test questions from the JSON file."""
+    logger.info(f"Attempting to load mock questions from '{MOCK_QUESTIONS_FILE}'.")
+    try:
+        with open(MOCK_QUESTIONS_FILE, 'r', encoding="utf-8") as f:
+            data = json.load(f)
             
-            # Add padding token if not present (required for some models)
-            if self.tokenizer.pad_token is None:
-                # Use end-of-sequence token as padding token
-                self.tokenizer.pad_token = self.tokenizer.eos_token
-                
-            # Print success message
-            print("✅ Model loaded successfully!")
-            # Return success message for UI
-            return "✅ Model loaded successfully! You can now use all features."
-        except Exception as e:
-            # If error occurs, print error and return error message
-            print(f"❌ Error loading model: {e}")
-            return f"❌ Error loading model: {e}\n\nFor demo purposes, you can still use the mock test feature!"
-    
-    def generate_response(self, prompt: str, max_length: int = 200) -> str:
-        """Generate response using the loaded model"""
-        # Check if model and tokenizer are loaded
-        if self.model is None or self.tokenizer is None:
-            return "⚠️ Model not loaded. Please load the model first or use the mock test feature."
-        
-        try:
-            # Encode the prompt text into token IDs
-            inputs = self.tokenizer.encode(prompt, return_tensors="pt", truncation=True, max_length=512)
+        # Flatten the categorized questions into a single list
+        questions = []
+        for category, category_questions in data.items():
+            for question in category_questions:
+                # Ensure the question has the expected structure
+                if all(key in question for key in ["question", "options", "correct_answer"]):
+                    questions.append(question)
+                else:
+                    logger.warning(f"Skipping malformed question in {category}: {question}")
             
-            # Generate response without computing gradients (for inference)
-            with torch.no_grad():
-                # Generate text using the model
-                outputs = self.model.generate(
-                    inputs,  # Input token IDs
-                    max_length=max_length,  # Maximum length of generated text
-                    num_return_sequences=1,  # Number of sequences to generate
-                    temperature=0.7,  # Controls randomness (0.7 = balanced)
-                    do_sample=True,  # Enable sampling (not greedy decoding)
-                    pad_token_id=self.tokenizer.eos_token_id  # Padding token ID
-                )
+        logger.info(f"✅ Successfully loaded {len(questions)} questions from {len(data)} categories.")
+        return questions
+    except FileNotFoundError:
+        logger.error(f"The file '{MOCK_QUESTIONS_FILE}' was not found.")
+        return []
+    except json.JSONDecodeError:
+        logger.error(f"The file '{MOCK_QUESTIONS_FILE}' is corrupted and not valid JSON.")
+        return []
+
+mock_questions_db = load_mock_questions()
+
+# ======================================================================================
+# CORE LOGIC FUNCTIONS (tied to UI components)
+# ======================================================================================
+
+def handle_doubt_clearance(question: str, context: str) -> str:
+    """Logic for the 'AI-Powered Doubt Clearance' feature."""
+    logger.info("--- 'Doubt Clearance' button clicked. ---")
+    if not model_loaded:
+        logger.error("Doubt clearance aborted: The AI model is not loaded.")
+        return "⚠️ **Model Error**: AI features are unavailable. Please check the console logs."
+    if not question or not question.strip():
+        logger.warning("Request is empty. Asking user for a question.")
+        return "Please enter a medical question to get an AI-powered explanation."
+
+    prompt = create_doubt_prompt(question, context)
+    return model_manager.generate_response(prompt)
+
+def handle_notes_generation(topic: str) -> str:
+    """Logic for the 'Smart Notes Generator' feature."""
+    logger.info(f"--- 'Generate Notes' button clicked for topic: '{topic}'. ---")
+    if not model_loaded:
+        logger.error("Notes generation aborted: The AI model is not loaded.")
+        return "⚠️ **Model Error**: AI features are unavailable. Please check the console logs."
+    if not topic or not topic.strip():
+        logger.warning("Request is empty. Asking user for a topic.")
+        return "Please enter a topic to generate your smart study notes."
+
+    prompt = create_notes_prompt(topic)
+    return model_manager.generate_response(prompt, max_new_tokens=600)
+
+def handle_start_mock_test(num_questions_str: str):
+    """Prepares and displays the UI for a new mock test."""
+    logger.info(f"--- 'Start Mock Test' button clicked with setting: '{num_questions_str}' questions. ---")
+    
+    if not mock_questions_db:
+        logger.error("Cannot start test: The question database is empty or failed to load.")
+        raise gr.Error("Mock Test Unavailable: Could not load the question database. Check logs.")
+
+    num_questions = int(num_questions_str)
+    logger.info(f"Preparing a test with {num_questions} questions.")
+    selected_questions = random.sample(mock_questions_db, num_questions)
+    
+    test_state = {"questions": selected_questions}
+    
+    ui_updates = []
+    # Un-hide and populate the question components
+    for q in selected_questions:
+        ui_updates.append(gr.update(label=q["question"], visible=True))
+        # Convert options dictionary to formatted list for radio buttons
+        formatted_options = [f"{key}: {value}" for key, value in q["options"].items()]
+        ui_updates.append(gr.update(choices=formatted_options, value=None, visible=True))
+
+    # Hide any unused question components
+    for _ in range(5 - num_questions):
+        ui_updates.append(gr.update(visible=False))
+        ui_updates.append(gr.update(visible=False))
+        
+    # Show the submit button
+    ui_updates.append(gr.update(visible=True))
+    
+    logger.info("✅ UI updated for the new mock test.")
+    return ui_updates + [test_state]
+
+def handle_submit_mock_test(test_state: dict, *answers: str) -> str:
+    """Evaluates the submitted mock test and returns the score."""
+    logger.info("--- 'Submit Test' button clicked. ---")
+    if not test_state or "questions" not in test_state:
+        logger.error("Evaluation failed: The test state is invalid or missing.")
+        return "Error: Could not grade the test. Please start a new one."
+
+    total_questions = len(test_state["questions"])
+    correct_answers = 0
+    unanswered_questions = 0
+    logger.info(f"Evaluating {total_questions} answers...")
+    
+    result_details = []
+    for i, q_data in enumerate(test_state["questions"]):
+        user_answer = answers[i]
+        
+        # Check if answer was provided
+        if not user_answer:
+            unanswered_questions += 1
+            result_details.append(f"Q{i+1}: ❌ Not answered")
+            continue
             
-            # Decode the generated token IDs back to text
-            response = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
-            # Remove the original prompt from response to get clean answer
-            response = response.replace(prompt, "").strip()
-            # Return response or default message if empty
-            return response if response else "I apologize, but I couldn't generate a response. Please try again."
-            
-        except Exception as e:
-            # Return error message if generation fails
-            return f"❌ Error generating response: {e}"
-    
-    def doubt_clearance(self, question: str) -> str:
-        """Handle doubt clearance queries"""
-        # Check if question is not empty
-        if not question.strip():
-            return "Please enter your medical question."
+        # Extract the answer key from the formatted string (e.g., "A: Coronary artery spasm" -> "A")
+        if ":" in user_answer:
+            user_answer = user_answer.split(":")[0].strip()
         
-        # Create prompt using utility function
-        prompt = create_doubt_prompt(question)
-        # Generate and return response
-        return self.generate_response(prompt, max_length=300)
-    
-    def generate_notes(self, topic: str) -> str:
-        """Generate notes for a given topic"""
-        # Check if topic is not empty
-        if not topic.strip():
-            return "Please enter a medical topic for notes generation."
+        correct_answer = q_data["correct_answer"]
+        is_correct = user_answer == correct_answer
         
-        # Create prompt using utility function
-        prompt = create_notes_prompt(topic)
-        # Generate and return response
-        return self.generate_response(prompt, max_length=400)
-    
-    def get_available_topics(self) -> List[str]:
-        """Get list of available topics for mock tests"""
-        # Return list of topic keys from mock questions dictionary
-        return list(self.mock_questions.keys())
-    
-    def start_mock_test(self, topic: str, num_questions: int = 5) -> tuple:
-        """Start a mock test for the selected topic"""
-        # Check if topic exists in mock questions
-        if topic not in self.mock_questions:
-            return "❌ Topic not found in database.", None, None
-        
-        # Get available questions for the topic
-        available_questions = self.mock_questions[topic]
-        # Adjust number of questions if not enough available
-        if len(available_questions) < num_questions:
-            num_questions = len(available_questions)
-        
-        # Randomly select questions from available pool
-        selected_questions = random.sample(available_questions, num_questions)
-        # Store current test information
-        self.current_test = {
-            'topic': topic,  # Test topic
-            'questions': selected_questions,  # Selected questions
-            'answers': {},  # User answers (empty initially)
-            'started': True  # Test status flag
-        }
-        
-        # Format questions for display
-        questions_text = f"📝 Mock Test: {topic.upper()}\n"
-        questions_text += f"Total Questions: {num_questions}\n"
-        questions_text += "="*50 + "\n\n"
-        
-        # Loop through each question and format it
-        for i, q in enumerate(selected_questions, 1):
-            # Add question number and text
-            questions_text += f"Q{i}. {q['question']}\n"
-            # Add each option (A, B, C, D)
-            for option, text in q['options'].items():
-                questions_text += f"   {option}) {text}\n"
-            questions_text += "\n"
-        
-        # Return formatted questions and update UI components
-        return questions_text, gr.update(visible=True), gr.update(visible=True)
-    
-    def submit_test_answers(self, answers: str) -> str:
-        """Submit and grade mock test answers"""
-        # Check if there's an active test
-        if not self.current_test or not self.current_test['started']:
-            return "❌ No active test. Please start a test first."
-        
-        # Check if answers were provided
-        if not answers.strip():
-            return "❌ Please provide your answers."
-        
-        # Parse answers from comma-separated string (format: A,B,C,D,A)
-        try:
-            # Split by comma and convert to uppercase
-            user_answers = [ans.strip().upper() for ans in answers.split(',')]
-        except:
-            return "❌ Invalid answer format. Please use format: A,B,C,D,A"
-        
-        # Get questions from current test
-        questions = self.current_test['questions']
-        # Check if number of answers matches number of questions
-        if len(user_answers) != len(questions):
-            return f"❌ Expected {len(questions)} answers, got {len(user_answers)}."
-        
-        # Grade the test
-        correct = 0  # Counter for correct answers
-        results = f"📊 Test Results: {self.current_test['topic'].upper()}\n"
-        results += "="*50 + "\n\n"
-        
-        # Loop through each question and user answer
-        for i, (question, user_answer) in enumerate(zip(questions, user_answers), 1):
-            # Get correct answer from question data
-            correct_answer = question['correct_answer']
-            # Check if user answer is correct
-            is_correct = user_answer == correct_answer
-            
-            if is_correct:
-                # Increment correct counter
-                correct += 1
-                # Add correct answer to results
-                results += f"✅ Q{i}: Correct ({user_answer})\n"
-            else:
-                # Add incorrect answer with explanation
-                results += f"❌ Q{i}: Wrong ({user_answer}) - Correct: {correct_answer}\n"
-                results += f"   💡 {question['explanation']}\n"
-            results += "\n"
-        
-        # Calculate percentage score
-        score = (correct / len(questions)) * 100
-        results += f"🎯 Final Score: {correct}/{len(questions)} ({score:.1f}%)\n"
-        
-        # Add motivational message based on score
-        if score >= 80:
-            results += "🌟 Excellent! Keep up the great work!"
-        elif score >= 60:
-            results += "👍 Good job! Review the incorrect answers."
+        if is_correct:
+            correct_answers += 1
+            result_details.append(f"Q{i+1}: ✅ Correct ({user_answer})")
         else:
-            results += "📚 Keep studying! Review the topic thoroughly."
-        
-        # Reset test state
-        self.current_test = None
-        
-        # Return formatted results
-        return results
+            result_details.append(f"Q{i+1}: ❌ Wrong ({user_answer}) - Correct: {correct_answer}")
+            
+        logger.info(f"Q{i+1}: User answered '{user_answer}', Correct is '{correct_answer}'. ({'Correct' if is_correct else 'Incorrect'})")
     
-    def get_motivation(self) -> str:
-        """Get a random motivational quote"""
-        # Get list of motivational quotes from utils
-        quotes = get_motivational_quotes()
-        # Return a random quote
-        return random.choice(quotes)
+    score = (correct_answers / total_questions) * 100 if total_questions > 0 else 0
+    
+    # Build result text
+    result_text = f"**Final Score: {correct_answers} out of {total_questions} ({score:.2f}%)**\n\n"
+    if unanswered_questions > 0:
+        result_text += f"⚠️ {unanswered_questions} question(s) not answered\n\n"
+    
+    result_text += "**Detailed Results:**\n" + "\n".join(result_details)
+    
+    logger.info(f"✅ Test evaluation complete. Final Score: {score:.2f}%")
+    return result_text
 
-def create_interface():
-    """Create the Gradio interface"""
-    # Create instance of DrAITutor class
-    tutor = DrAITutor()
+# ======================================================================================
+# GRADIO UI DEFINITION AND LAUNCH
+# ======================================================================================
+
+def create_gradio_interface():
+    """Builds the full Gradio interface and connects logic to components."""
+    logger.info("--- Building the Gradio User Interface. ---")
     
-    # Create Gradio interface with custom CSS
-    with gr.Blocks(
-        title="DrAI Medical Tutor",  # Browser tab title
-        css="""
-        .gradio-container {
-            max-width: 1200px !important;  /* Set maximum width for container */
-        }
-        .main-header {
-            text-align: center;  /* Center align header text */
-            padding: 20px;  /* Add padding around header */
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);  /* Gradient background */
-            color: white;  /* White text color */
-            border-radius: 10px;  /* Rounded corners */
-            margin-bottom: 20px;  /* Bottom margin */
-        }
-        """
-    ) as interface:
-        
-        # Create header section with HTML
-        gr.HTML("""
-        <div class="main-header">
-            <h1>🧠 DrAI Medical Tutor</h1>
-            <p>Your AI-powered companion for NEET-PG preparation</p>
-        </div>
-        """)
-        
-        # Create tabbed interface
+    with gr.Blocks(title="Dr. AI Medical Tutor") as demo:
+        gr.Markdown("# 🧠 Dr. AI Medical Tutor for NEET-PG")
+
         with gr.Tabs():
-            
-            # Tab 1: Model Loading
-            with gr.Tab("🚀 Setup"):
-                # Add markdown description
-                gr.Markdown("### Load AI Model")
-                gr.Markdown("Start by loading the AI model to enable doubt clearance and notes generation.")
-                
-                # Create load button and status display
-                load_btn = gr.Button("Load AI Model", variant="primary")
-                load_status = gr.Textbox(label="Status", interactive=False)
-                # Connect button click to load_model function
-                load_btn.click(tutor.load_model, outputs=load_status)
-            
-            # Tab 2: Doubt Clearance
-            with gr.Tab("❓ Doubt Clearance"):
-                # Add markdown description
-                gr.Markdown("### Ask any medical question and get expert answers")
-                
-                # Create input textbox for questions
-                doubt_input = gr.Textbox(
-                    label="Your Medical Question",
-                    placeholder="e.g., What are the symptoms of myocardial infarction?",
-                    lines=3  # Set number of lines for textbox
-                )
-                # Create button and output textbox
-                doubt_btn = gr.Button("Get Answer", variant="primary")
-                doubt_output = gr.Textbox(label="DrAI's Answer", lines=8, interactive=False)
-                
-                # Connect button click to doubt_clearance function
-                doubt_btn.click(tutor.doubt_clearance, inputs=doubt_input, outputs=doubt_output)
-            
-            # Tab 3: Notes Generator
-            with gr.Tab("📝 Notes Generator"):
-                # Add markdown description
-                gr.Markdown("### Generate comprehensive notes for any medical topic")
-                
-                # Create input textbox for topics
-                notes_input = gr.Textbox(
-                    label="Medical Topic",
-                    placeholder="e.g., Types of Shock, ECG Interpretation, Diabetes Management",
-                    lines=2
-                )
-                # Create button and output textbox
-                notes_btn = gr.Button("Generate Notes", variant="primary")
-                notes_output = gr.Textbox(label="Generated Notes", lines=12, interactive=False)
-                
-                # Connect button click to generate_notes function
-                notes_btn.click(tutor.generate_notes, inputs=notes_input, outputs=notes_output)
-            
-            # Tab 4: Mock Test
-            with gr.Tab("📊 Mock Test"):
-                # Add markdown description
-                gr.Markdown("### Practice with topic-specific MCQs")
-                
-                # Create row with topic dropdown and question count slider
-                with gr.Row():
-                    # Create dropdown for topic selection
-                    topic_dropdown = gr.Dropdown(
-                        choices=tutor.get_available_topics(),  # Get available topics
-                        label="Select Topic",
-                        value=tutor.get_available_topics()[0] if tutor.get_available_topics() else None
-                    )
-                    # Create slider for number of questions
-                    num_questions = gr.Slider(
-                        minimum=1,  # Minimum questions
-                        maximum=10,  # Maximum questions
-                        value=5,  # Default value
-                        step=1,  # Step size
-                        label="Number of Questions"
-                    )
-                
-                # Create start test button and questions display
-                start_test_btn = gr.Button("Start Test", variant="primary")
-                test_questions = gr.Textbox(label="Test Questions", lines=15, interactive=False)
-                
-                # Create row for answer input and submit button (initially hidden)
-                with gr.Row():
-                    # Create textbox for answers
-                    answers_input = gr.Textbox(
-                        label="Your Answers (A,B,C,D,A)",
-                        placeholder="Enter answers separated by commas",
-                        visible=False  # Initially hidden
-                    )
-                    # Create submit button (initially hidden)
-                    submit_btn = gr.Button("Submit Test", variant="secondary", visible=False)
-                
-                # Create results display textbox
-                test_results = gr.Textbox(label="Test Results", lines=10, interactive=False)
-                
-                # Connect start test button to start_mock_test function
-                start_test_btn.click(
-                    tutor.start_mock_test,
-                    inputs=[topic_dropdown, num_questions],
-                    outputs=[test_questions, answers_input, submit_btn]
-                )
-                
-                # Connect submit button to submit_test_answers function
-                submit_btn.click(
-                    tutor.submit_test_answers,
-                    inputs=answers_input,
-                    outputs=test_results
-                )
-            
-            # Tab 5: Motivation
-            with gr.Tab("💪 Motivation"):
-                # Add markdown description
-                gr.Markdown("### Get motivated for your medical journey!")
-                
-                # Create button and output textbox
-                motivation_btn = gr.Button("Get Motivation", variant="primary")
-                motivation_output = gr.Textbox(label="Today's Motivation", lines=3, interactive=False)
-                
-                # Connect button click to get_motivation function
-                motivation_btn.click(tutor.get_motivation, outputs=motivation_output)
-        
-        # Create footer with HTML
-        gr.HTML("""
-        <div style="text-align: center; padding: 20px; color: #666;">
-            <p>🧠 DrAI Medical Tutor - Empowering medical students with AI</p>
-            <p>Built with ❤️ for NEET-PG aspirants</p>
-        </div>
-        """)
-    
-    # Return the created interface
-    return interface
+            # Tab 1: Doubt Clearance
+            with gr.TabItem("❓ AI-Powered Doubt Clearance"):
+                # UI Components defined here...
+                doubt_question = gr.Textbox(lines=4, label="Your Medical Question")
+                doubt_context = gr.Textbox(lines=4, label="Optional Context")
+                doubt_button = gr.Button("💬 Get AI Explanation", variant="primary")
+                doubt_output = gr.Markdown(label="AI Response")
 
-# Main execution block
+            # Tab 2: Smart Notes
+            with gr.TabItem("📝 Smart Notes Generator"):
+                # UI Components defined here...
+                notes_topic = gr.Textbox(label="Enter Topic")
+                notes_button = gr.Button("📄 Generate Notes", variant="primary")
+                notes_output = gr.Markdown(label="Your Smart Notes")
+
+            # Tab 3: Mock Test
+            with gr.TabItem("📊 Interactive Mock Test"):
+                # UI Components defined here...
+                num_questions_slider = gr.Slider(minimum=1, maximum=5, value=5, step=1, label="Number of Questions")
+                start_test_button = gr.Button("🚀 Start Mock Test", variant="primary")
+                
+                q_components = []
+                for i in range(5):
+                    with gr.Group(visible=False):
+                        q_components.append(gr.Label(f"Question {i+1}"))
+                        q_components.append(gr.Radio(label="", choices=[]))
+                
+                submit_button = gr.Button("🏁 Submit Test", variant="stop", visible=False)
+                score_output = gr.Markdown(label="Your Result")
+
+            # Tab 4: Motivation
+            with gr.TabItem("💪 Motivation Boost"):
+                # UI Components defined here...
+                quote_output = gr.Markdown(label="Quote of the Day")
+                quote_button = gr.Button("✨ Get New Quote")
+
+            # Tab 5: System Logs (NEW)
+            with gr.TabItem("📋 System Logs"):
+                gr.Markdown("### 🔍 Real-time Application Logs")
+                gr.Markdown("**Model Status:** Loading BioMistral-7B AI Model (15.9GB)")
+                gr.Markdown("**Progress:** Currently downloading model files...")
+                gr.Markdown("**Expected Time:** ~10-15 minutes depending on internet speed")
+                
+                log_display = gr.Textbox(
+                    lines=15, 
+                    label="📊 Live Logs", 
+                    value="Application starting...\nModel loading in progress...\nCheck terminal for detailed logs.",
+                    interactive=False
+                )
+                refresh_logs_button = gr.Button("🔄 Refresh Logs", variant="secondary")
+
+        logger.info("Connecting UI components to backend functions.")
+        
+        state = gr.State({}) 
+
+        # Connect event handlers
+        doubt_button.click(handle_doubt_clearance, inputs=[doubt_question, doubt_context], outputs=doubt_output)
+        notes_button.click(handle_notes_generation, inputs=notes_topic, outputs=notes_output)
+        quote_button.click(get_motivational_quote, outputs=quote_output)
+
+        radio_buttons = [comp for i, comp in enumerate(q_components) if i % 2 != 0]
+        start_test_button.click(
+            handle_start_mock_test,
+            inputs=num_questions_slider,
+            outputs=q_components + [submit_button, state]
+        )
+        submit_button.click(
+            handle_submit_mock_test,
+            inputs=[state] + radio_buttons,
+            outputs=score_output
+        )
+    
+    logger.info("--- Gradio interface built successfully. Ready to launch. ---")
+    return demo
+
 if __name__ == "__main__":
-    # Create the interface
-    interface = create_interface()
-    # Launch the interface with specific settings
-    interface.launch(
-        server_name="0.0.0.0",  # Allow external connections
-        server_port=7860,  # Port number
-        share=True,  # Enable sharing (creates public link)
-        show_error=True,  # Show detailed error messages
-        prevent_thread_lock=True,  # Prevent blocking
-        show_api=False  # Hide API docs for cleaner interface
-    ) 
+    logger.info("==========================================================")
+    logger.info("      Starting the Dr. AI Tutor Application v1.0          ")
+    logger.info("==========================================================")
+    
+    app_interface = create_gradio_interface()
+    
+    # Launch the Gradio app
+    logger.info("Launching Gradio web server...")
+    app_interface.launch(share=True, server_name="0.0.0.0", server_port=7860)
+    
+    logger.info("--- Application has been shut down. ---") 

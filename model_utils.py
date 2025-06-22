@@ -7,16 +7,22 @@ Provides comprehensive model management for both base and fine-tuned models.
 import json
 import random
 import torch
-from transformers import AutoTokenizer, AutoModelForCausalLM
+from transformers import AutoTokenizer, AutoModelForCausalLM, GPT2LMHeadModel, GPT2Tokenizer
+from transformers.utils.quantization_config import BitsAndBytesConfig
 from typing import List, Dict, Any, Optional
+import logging
 
-# Try to import PEFT for fine-tuning support
+# 1. Configure a logger for this module before any other code runs.
+logger = logging.getLogger(__name__)
+
+# 2. Check for PEFT library for fine-tuning support. This uses the logger.
 try:
     from peft import PeftModel
     PEFT_AVAILABLE = True
+    logger.info("PEFT library found. Fine-tuning features are enabled.")
 except ImportError:
     PEFT_AVAILABLE = False
-    print("⚠️ PEFT not available. Fine-tuning features will be disabled.")
+    logger.warning("PEFT library not found. Fine-tuning features will be disabled.")
 
 class ModelManager:
     """
@@ -30,31 +36,63 @@ class ModelManager:
         self.fine_tuned_model = None  # Fine-tuned model with LoRA
         # Load mock questions for testing
         self.mock_questions = self.load_mock_questions()
+        logger.info("ModelManager initialized. Model and tokenizer are not yet loaded.")
         
-    def load_base_model(self, model_name: str = "mistralai/BioMistral-7B"):
+    def load_base_model(self, model_name: str = "BioMistral/BioMistral-7B"):
         """
-        Load the base BioMistral model for medical text generation.
-        Uses 16-bit precision for memory efficiency.
+        Load the base BioMistral model, adapting to the available hardware.
+        Uses 4-bit quantization on compatible GPUs, otherwise falls back to CPU.
         """
+        logger.info(f"--- Starting Base Model Loading: '{model_name}' ---")
+        
+        # Check for CUDA GPU
+        use_gpu = torch.cuda.is_available()
+        if use_gpu:
+            logger.info("✅ CUDA-enabled GPU detected. Loading model with 4-bit quantization.")
+            # Configure quantization for GPU
+            quantization_config = BitsAndBytesConfig(
+                load_in_4bit=True,
+                bnb_4bit_quant_type="nf4",
+                bnb_4bit_compute_dtype=torch.float16,
+            )
+            model_kwargs = {
+                "quantization_config": quantization_config,
+                "device_map": "auto"
+            }
+        else:
+            logger.warning("⚠️ No CUDA-enabled GPU found. Loading model on CPU.")
+            logger.warning("Performance will be significantly slower. AI features will have a delay.")
+            # CPU configuration
+            model_kwargs = {
+                "device_map": "cpu",
+                "torch_dtype": torch.float32  # Use full precision for CPU
+            }
+
         try:
-            print(f"🔄 Loading base model: {model_name}")
-            # Load tokenizer from Hugging Face
+            logger.info(f"Step 1/3: Downloading and caching tokenizer for '{model_name}'.")
             self.tokenizer = AutoTokenizer.from_pretrained(model_name)
-            
-            # Set padding token if not present (required for some models)
+            logger.info("✅ Tokenizer loaded successfully.")
+
             if self.tokenizer.pad_token is None:
+                logger.warning("Tokenizer does not have a pad token. Setting it to eos_token.")
                 self.tokenizer.pad_token = self.tokenizer.eos_token
             
-            # Load model with 16-bit precision and automatic device mapping
+            logger.info(f"Step 2/3: Downloading and caching model '{model_name}'. This may take time.")
             self.model = AutoModelForCausalLM.from_pretrained(
                 model_name,
-                torch_dtype=torch.float16,
-                device_map="auto"
+                **model_kwargs
             )
-            print("✅ Base model loaded successfully!")
+            device = "GPU" if use_gpu else "CPU"
+            logger.info(f"✅ Model loaded successfully onto {device}.")
+
+            logger.info("Step 3/3: Setting model to evaluation mode.")
+            self.model.eval()
+            logger.info("--- Base Model Loading Complete ---")
             return True
+            
         except Exception as e:
-            print(f"❌ Error loading base model: {e}")
+            logger.critical(f"❌ FATAL ERROR during model loading: {e}")
+            logger.critical("The application's AI features will not work.")
             return False
     
     def load_fine_tuned_model(self, adapter_path: str = "fine_tuning/output/final"):
@@ -70,8 +108,15 @@ class ModelManager:
             # Ensure base model is loaded first
             if self.model is None:
                 print("⚠️ Base model not loaded. Loading base model first...")
-                self.load_base_model()
-            
+                if not self.load_base_model():
+                    print("❌ Failed to load base model. Cannot load fine-tuned model.")
+                    return False
+
+            # This check is for the linter, confirming self.model is not None.
+            if self.model is None:
+                print("❌ Unexpected error: Base model is still None after loading attempt.")
+                return False
+
             print(f"🔄 Loading fine-tuned adapter from: {adapter_path}")
             # Load and merge LoRA adapter with base model
             self.fine_tuned_model = PeftModel.from_pretrained(self.model, adapter_path)
@@ -294,4 +339,93 @@ def evaluate_answers(questions: List[Dict], user_answers: List[str]) -> Dict[str
     Convenience function to evaluate test answers.
     Uses the global model manager instance.
     """
-    return model_manager.evaluate_answers(questions, user_answers) 
+    return model_manager.evaluate_answers(questions, user_answers)
+
+def load_model_and_tokenizer(model_name="gpt2"):
+    """
+    Loads a pre-trained model and tokenizer from Hugging Face.
+
+    This function handles the loading of both the model and its corresponding
+    tokenizer. It includes detailed logging for each step of the process
+    and robust error handling for common issues like network problems or
+    missing model files.
+
+    Args:
+        model_name (str): The name of the pre-trained model to load,
+                          as listed on the Hugging Face Model Hub.
+                          Defaults to "gpt2".
+
+    Returns:
+        A tuple containing:
+        - model (GPT2LMHeadModel): The loaded pre-trained model.
+        - tokenizer (GPT2Tokenizer): The loaded tokenizer.
+        Returns (None, None) if loading fails.
+    """
+    logger.info(f"Attempting to load model and tokenizer for '{model_name}'...")
+    try:
+        # Load the tokenizer
+        logger.info(f"Downloading and caching tokenizer: '{model_name}'")
+        tokenizer = GPT2Tokenizer.from_pretrained(model_name)
+        logger.info("✅ Tokenizer loaded successfully.")
+
+        # Load the pre-trained model
+        logger.info(f"Downloading and caching model: '{model_name}'")
+        model = GPT2LMHeadModel.from_pretrained(model_name)
+        logger.info("✅ Model loaded successfully.")
+
+        # Set the model to evaluation mode
+        model.eval()
+        logger.info(f"Model '{model_name}' set to evaluation mode.")
+
+        return model, tokenizer
+
+    except OSError as e:
+        logger.error(
+            f"Model or tokenizer not found for '{model_name}'. "
+            f"Please check the model name and your internet connection. Error: {e}"
+        )
+        return None, None
+    except Exception as e:
+        logger.error(
+            f"An unexpected error occurred while loading the model: {e}"
+        )
+        return None, None
+
+
+def generate_text(model, tokenizer, prompt, max_length=150, temperature=0.7):
+    """
+    Generates text using the provided model, tokenizer, and prompt.
+
+    Args:
+        model: The pre-trained language model.
+        tokenizer: The tokenizer corresponding to the model.
+        prompt (str): The text prompt to start generation from.
+        max_length (int): The maximum length of the generated text.
+        temperature (float): Controls the randomness of the generation.
+                             Lower values are more deterministic.
+
+    Returns:
+        str: The generated text.
+    """
+    logger.info(f"Generating text for prompt (first 50 chars): '{prompt[:50]}...'")
+    try:
+        # Encode the prompt text into token IDs
+        input_ids = tokenizer.encode(prompt, return_tensors='pt')
+
+        # Generate text using the model
+        logger.info(f"Generating response with max_length={max_length} and temperature={temperature}")
+        output = model.generate(
+            input_ids,
+            max_length=max_length,
+            num_return_sequences=1,
+            temperature=temperature,
+            pad_token_id=tokenizer.eos_token_id  # Avoids warning
+        )
+
+        # Decode the generated token IDs back to a string
+        generated_text = tokenizer.decode(output[0], skip_special_tokens=True)
+        logger.info("✅ Text generation successful.")
+        return generated_text
+    except Exception as e:
+        logger.error(f"An error occurred during text generation: {e}")
+        return "Error: Could not generate text." 

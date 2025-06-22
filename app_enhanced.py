@@ -9,49 +9,94 @@ Features enhanced UI, multiple model support, and advanced functionality.
 import gradio as gr  # For creating web interface
 import json  # For JSON operations
 import random  # For random selections
+import logging # For logging application events
 from typing import List, Dict, Any  # For type hints
 # Import custom modules
 from model_utils import model_manager, ask_doubt, generate_notes, get_available_topics, evaluate_answers
-from utils import get_motivational_quotes
+from utils import get_motivational_quote
+
+# --- Logger Setup ---
+def setup_logger():
+    """Sets up a logger to output to both console and a file."""
+    logger = logging.getLogger(__name__)
+    if logger.hasHandlers():
+        logger.handlers.clear()
+        
+    logger.setLevel(logging.INFO)
+    
+    # Create a file handler
+    file_handler = logging.FileHandler('app_enhanced.log', mode='w')
+    file_handler.setLevel(logging.INFO)
+    
+    # Create a console handler
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(logging.INFO)
+    
+    # Create a formatter and set it for both handlers
+    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+    file_handler.setFormatter(formatter)
+    console_handler.setFormatter(formatter)
+    
+    # Add handlers to the logger
+    logger.addHandler(file_handler)
+    logger.addHandler(console_handler)
+    
+    return logger
+
+# Initialize the logger
+logger = setup_logger()
+# --- End Logger Setup ---
+
 
 class DrAITutorEnhanced:
     """
     Enhanced DrAI Tutor class with advanced features.
     Supports multiple model types, enhanced UI, and improved functionality.
     """
-    def __init__(self):
+    def __init__(self, logger):
         # Initialize current test state
         self.current_test = None
         # Initialize current questions list
         self.current_questions = []
+        # Set up logger
+        self.logger = logger
+        self.logger.info("DrAITutorEnhanced class initialized.")
         
     def load_model(self, model_type: str = "base"):
         """
         Load the appropriate model based on user choice.
         Supports both base and fine-tuned models.
         """
+        self.logger.info(f"Button Click: 'Load Model'. Input: model_type='{model_type}'")
         try:
             # Check if user wants fine-tuned model
             if model_type == "fine_tuned":
                 success = model_manager.load_fine_tuned_model()
                 if success:
-                    return "✅ Fine-tuned model loaded successfully! You now have enhanced medical knowledge."
+                    status = "✅ Fine-tuned model loaded successfully! You now have enhanced medical knowledge."
                 else:
-                    return "⚠️ Fine-tuned model not found. Loading base model instead."
+                    status = "⚠️ Fine-tuned model not found. Loading base model instead."
             
             # Load base model
-            success = model_manager.load_base_model()
-            if success:
-                return "✅ Base model loaded successfully! You can now use all features."
             else:
-                return "❌ Error loading model. You can still use the mock test feature!"
+                success = model_manager.load_base_model()
+                if success:
+                    status = "✅ Base model loaded successfully! You can now use all features."
+                else:
+                    status = "❌ Error loading model. You can still use the mock test feature!"
+            
+            self.logger.info(f"Output: Load model status='{status}'")
+            return status
                 
         except Exception as e:
+            self.logger.error(f"An exception occurred in load_model: {e}", exc_info=True)
             return f"❌ Error: {e}"
     
     def chat_interface(self, message: str, history: list) -> tuple:
         """Enhanced chat interface for doubt clearance - UPDATED for messages format"""
+        self.logger.info(f"Button Click: 'Submit' (Chat). Input: message='{message}'")
         if not message.strip():
+            self.logger.warning("Chat input was empty.")
             return "", history
         
         # Append user message to history
@@ -59,6 +104,7 @@ class DrAITutorEnhanced:
         
         # Get AI response
         response = ask_doubt(message)
+        self.logger.info(f"Output: Chatbot response='{response[:80]}...'")
         
         # Append bot response to history
         history.append({"role": "assistant", "content": response})
@@ -70,21 +116,27 @@ class DrAITutorEnhanced:
         Generate notes with different detail levels.
         Supports basic, comprehensive, and advanced detail levels.
         """
+        self.logger.info(f"Button Click: 'Generate Notes'. Inputs: topic='{topic}', detail_level='{detail_level}'")
         # Check if topic is provided
         if not topic.strip():
+            self.logger.warning("Notes generation called with no topic.")
             return "Please enter a medical topic for notes generation."
         
         # Add detail level to the prompt for enhanced generation
         enhanced_topic = f"{topic} ({detail_level} level)"
-        return generate_notes(enhanced_topic)
+        notes = generate_notes(enhanced_topic)
+        self.logger.info(f"Output: Generated notes (first 80 chars)='{notes[:80]}...'")
+        return notes
     
     def start_mock_test_enhanced(self, topic: str, num_questions: int = 5) -> str:
         """
         Start a mock test with enhanced UI and functionality.
         Provides better question selection and formatting.
         """
+        self.logger.info(f"Button Click: 'Start Test'. Inputs: topic='{topic}', num_questions={num_questions}")
         # Check if topic exists in database
         if topic not in model_manager.mock_questions:
+            self.logger.warning(f"Mock test topic '{topic}' not found in database.")
             return "❌ Topic not found in database."
         
         # Get questions from model manager
@@ -108,6 +160,7 @@ class DrAITutorEnhanced:
                 questions_display += f"   {option}) {text}\n"
             questions_display += "\n"
         
+        self.logger.info(f"Output: Displaying {len(self.current_questions)} questions for topic '{topic}'.")
         return questions_display
     
     def submit_test_enhanced(self, answers: str) -> str:
@@ -115,14 +168,17 @@ class DrAITutorEnhanced:
         Submit test with enhanced evaluation and detailed feedback.
         Provides comprehensive results with explanations.
         """
+        self.logger.info(f"Button Click: 'Submit Test'. Input: answers='{answers}'")
         # Check if there's an active test
         if not self.current_test or not self.current_test['started']:
+            self.logger.warning("Submit test called with no active test.")
             return "❌ No active test. Please start a test first."
         
         # Parse answers from comma-separated string
         try:
             user_answers = [ans.strip().upper() for ans in answers.split(',')]
         except:
+            self.logger.error(f"Invalid answer format submitted: '{answers}'")
             return "❌ Invalid answer format. Please use format: A,B,C,D,A"
         
         # Evaluate answers using model manager
@@ -154,21 +210,25 @@ class DrAITutorEnhanced:
         self.current_test = None
         self.current_questions = []
         
+        self.logger.info(f"Output: Test results calculated. Score: {results['score_percentage']:.1f}%")
         return output
     
     def get_motivation(self) -> str:
         """
         Get a random motivational quote for medical students.
         """
+        self.logger.info("Button Click: 'Get Motivation'")
         # Get quotes from utils and return a random one
-        quotes = get_motivational_quotes()
-        return random.choice(quotes)
+        quote = get_motivational_quote()
+        self.logger.info(f"Output: Motivation quote='{quote}'")
+        return quote
     
     def get_daily_tip(self) -> str:
         """
         Get a daily study tip for medical students.
         Provides practical advice for NEET-PG preparation.
         """
+        self.logger.info("Button Click: 'Get Study Tip'")
         # List of study tips for medical students
         tips = [
             "💡 Study Tip: Use the Feynman Technique - explain concepts in simple terms to reinforce learning.",
@@ -181,49 +241,114 @@ class DrAITutorEnhanced:
             "💡 Study Tip: Teach concepts to others - it's the best way to learn yourself."
         ]
         # Return a random tip
-        return random.choice(tips)
+        tip = random.choice(tips)
+        self.logger.info(f"Output: Daily tip='{tip}'")
+        return tip
 
 def create_enhanced_interface():
     """
-    Create the enhanced Gradio interface with modern UI.
-    Features improved styling, better organization, and enhanced functionality.
+    Create the enhanced Gradio interface with modern UI inspired by Medsy.
+    Features a clean, professional, light theme with a card-based layout.
     """
+    logger.info("--- Creating Enhanced Gradio Interface ---")
     # Create instance of enhanced tutor
-    tutor = DrAITutorEnhanced()
+    tutor = DrAITutorEnhanced(logger)
+    
+    # --- Custom Medsy-Inspired CSS ---
+    medsy_css = """
+    :root {
+        --primary-color: #28a745; /* A fresh green */
+        --background-color-light: #F0FDF4; /* Light green background */
+        --text-color: #334155; /* Dark slate text */
+        --card-background: #FFFFFF;
+        --border-color: #E2E8F0;
+        --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+        --font-family: 'Helvetica Neue', Arial, sans-serif;
+    }
+    body, .gradio-container { 
+        font-family: var(--font-family);
+        background-color: var(--background-color-light);
+        color: var(--text-color);
+    }
+    .gradio-container {
+        max-width: 1200px !important;
+        margin: auto;
+        padding-top: 2rem;
+    }
+    .main-header {
+        text-align: center;
+        padding: 1.5rem;
+        background-color: var(--card-background);
+        border-radius: 15px;
+        margin-bottom: 2rem;
+        border: 1px solid var(--border-color);
+        box-shadow: var(--shadow);
+    }
+    .main-header h1 {
+        color: var(--primary-color);
+        font-size: 2.5rem;
+        margin-bottom: 0.5rem;
+    }
+    .main-header p {
+        font-size: 1rem;
+        color: #64748B;
+    }
+    .tab-nav button {
+        background-color: #F8FAFC !important;
+        border: 1px solid var(--border-color) !important;
+        border-radius: 8px !important;
+        margin: 0 5px !important;
+        transition: all 0.3s ease !important;
+    }
+    .tab-nav button.selected {
+        background-color: var(--primary-color) !important;
+        color: white !important;
+        border-color: var(--primary-color) !important;
+        box-shadow: var(--shadow);
+    }
+    .panel { /* Targets the content inside tabs */
+        background-color: var(--card-background);
+        border: 1px solid var(--border-color) !important;
+        border-radius: 15px !important;
+        padding: 1.5rem;
+        box-shadow: var(--shadow);
+    }
+    .gr-button { /* General button styling */
+        border-radius: 8px !important;
+        transition: all 0.3s ease !important;
+    }
+    .gr-button.gr-button-primary {
+        background-color: var(--primary-color) !important;
+        color: white !important;
+        border: none !important;
+    }
+    .gr-button.gr-button-secondary {
+        background-color: #F8FAFC !important;
+        border: 1px solid var(--border-color) !important;
+        color: var(--text-color) !important;
+    }
+    """
     
     # Create Gradio interface with enhanced styling
     with gr.Blocks(
         title="DrAI Medical Tutor - Enhanced",
-        css="""
-        .gradio-container {
-            max-width: 1400px !important;
-        }
-        .main-header {
-            text-align: center;
-            padding: 20px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border-radius: 15px;
-            margin-bottom: 20px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-        }
-        """
+        css=medsy_css
     ) as interface:
         
-        # Enhanced header with gradient background
+        # Enhanced header with new logo and style
         gr.HTML("""
         <div class="main-header">
-            <h1>🧠 DrAI Medical Tutor - Enhanced</h1>
-            <p>Your AI-powered companion for NEET-PG preparation</p>
-            <p style="font-size: 14px; opacity: 0.9;">Powered by BioMistral-7B | Enhanced with LoRA Fine-tuning</p>
+            <h1>🧠 DrAI Medical Tutor</h1>
+            <p>Your AI-powered companion for medical exam preparation</p>
         </div>
         """)
         
         # Create tabbed interface for different features
-        with gr.Tabs():
+        with gr.Tabs() as tabs:
             
             # Tab 1: Model Setup
-            with gr.Tab("🚀 Setup"):
+            with gr.Tab("🚀 Setup", elem_classes="panel") as setup_tab:
+                setup_tab.select(lambda: logger.info("Tab Switched: 'Setup'"))
                 gr.Markdown("### Load AI Model")
                 gr.Markdown("Choose your preferred model for the best medical assistance.")
                 
@@ -235,7 +360,7 @@ def create_enhanced_interface():
                         label="Model Type",
                         info="Fine-tuned model provides better medical knowledge"
                     )
-                    load_btn = gr.Button("Load Model", variant="primary", size="lg")
+                    load_btn = gr.Button("Load Model", variant="primary")
                 
                 # Status display
                 load_status = gr.Textbox(label="Status", interactive=False, lines=3)
@@ -243,7 +368,8 @@ def create_enhanced_interface():
                 load_btn.click(tutor.load_model, inputs=model_type, outputs=load_status)
             
             # Tab 2: Enhanced Chat Interface
-            with gr.Tab("💬 Doubt Clearance"):
+            with gr.Tab("💬 Doubt Clearance", elem_classes="panel") as chat_tab:
+                chat_tab.select(lambda: logger.info("Tab Switched: 'Doubt Clearance'"))
                 gr.Markdown("### Ask any medical question and get expert answers")
                 
                 # Chat interface components
@@ -253,14 +379,18 @@ def create_enhanced_interface():
                     placeholder="Ask any medical question...",
                     lines=2
                 )
-                clear = gr.Button("Clear Chat", variant="secondary")
+                with gr.Row():
+                    clear = gr.Button("Clear Chat", variant="secondary")
+                    submit_btn = gr.Button("Submit", variant="primary")
                 
                 # Connect chat interface functions
+                submit_btn.click(tutor.chat_interface, [msg, chatbot], [msg, chatbot])
                 msg.submit(tutor.chat_interface, [msg, chatbot], [msg, chatbot])
-                clear.click(lambda: None, None, chatbot, queue=False)
+                clear.click(lambda: (logger.info("Button Click: 'Clear Chat'"), None, None), None, [msg, chatbot], queue=False)
             
             # Tab 3: Enhanced Notes Generator
-            with gr.Tab("📝 Notes Generator"):
+            with gr.Tab("📝 Notes Generator", elem_classes="panel") as notes_tab:
+                notes_tab.select(lambda: logger.info("Tab Switched: 'Notes Generator'"))
                 gr.Markdown("### Generate comprehensive notes for any medical topic")
                 
                 # Notes generation interface
@@ -282,7 +412,8 @@ def create_enhanced_interface():
                 notes_btn.click(tutor.generate_notes_enhanced, [notes_topic, detail_level], notes_output)
             
             # Tab 4: Enhanced Mock Test
-            with gr.Tab("📊 Mock Test"):
+            with gr.Tab("📊 Mock Test", elem_classes="panel") as test_tab:
+                test_tab.select(lambda: logger.info("Tab Switched: 'Mock Test'"))
                 gr.Markdown("### Practice with topic-specific MCQs")
                 
                 # Mock test interface
@@ -309,16 +440,17 @@ def create_enhanced_interface():
                         label="Your Answers (A,B,C,D,A)",
                         placeholder="Enter answers separated by commas"
                     )
-                    submit_btn = gr.Button("Submit Test", variant="secondary")
+                    submit_test_btn = gr.Button("Submit Test", variant="secondary")
                 
                 test_results = gr.Textbox(label="Test Results", lines=12, interactive=False)
                 
                 # Connect mock test functions
                 start_test_btn.click(tutor.start_mock_test_enhanced, [test_topic, num_questions], test_questions)
-                submit_btn.click(tutor.submit_test_enhanced, answers_input, test_results)
+                submit_test_btn.click(tutor.submit_test_enhanced, answers_input, test_results)
             
             # Tab 5: Motivation & Tips
-            with gr.Tab("💪 Motivation"):
+            with gr.Tab("💪 Motivation", elem_classes="panel") as motivation_tab:
+                motivation_tab.select(lambda: logger.info("Tab Switched: 'Motivation'"))
                 gr.Markdown("### Stay motivated and get study tips")
                 
                 # Motivation and tips interface
@@ -335,24 +467,19 @@ def create_enhanced_interface():
         
         # Footer with information
         gr.HTML("""
-        <div style="text-align: center; padding: 20px; color: #666;">
-            <p>🧠 DrAI Medical Tutor - Enhanced</p>
-            <p>Built with ❤️ for NEET-PG aspirants</p>
+        <div style="text-align: center; padding: 20px; color: #64748B;">
+            <p>Built with ❤️ for future doctors</p>
         </div>
         """)
     
+    logger.info("--- Gradio Interface Created Successfully ---")
     # Return the interface
     return interface
 
 # Main execution block
 if __name__ == "__main__":
     # Create and launch the enhanced interface
+    logger.info("--- Starting Application ---")
     interface = create_enhanced_interface()
-    interface.launch(
-        server_name="localhost",
-        server_port=7865,
-        share=False,
-        show_error=True,
-        prevent_thread_lock=True,
-        show_api=False
-    )
+    interface.launch(share=True)
+    logger.info("--- Application Launched ---")
