@@ -11,7 +11,10 @@ import random
 from utils import get_motivational_quotes
 
 def demo_mock_test():
-    """Demo the mock test functionality"""
+    """
+    Demo the mock test functionality using sample questions.
+    Loads questions from mock_questions.json and displays a sample test.
+    """
     # Print demo header for mock test feature
     print("🧠 DrAI Medical Tutor - Mock Test Demo")
     # Print separator line for better readability
@@ -63,7 +66,9 @@ def demo_mock_test():
     print("\n✅ Mock test demo completed!")
 
 def demo_motivation():
-    """Demo the motivation feature"""
+    """
+    Demo the motivation feature by displaying sample motivational quotes.
+    """
     # Print demo header for motivation feature
     print("\n💪 DrAI Medical Tutor - Motivation Demo")
     # Print separator line
@@ -88,7 +93,10 @@ def demo_motivation():
     print("✅ Motivation demo completed!")
 
 def demo_prompts():
-    """Demo the prompt generation"""
+    """
+    Demo the prompt generation for doubt clearance and notes.
+    Shows how prompts are created for the AI model.
+    """
     # Print demo header for prompt generation feature
     print("\n📝 DrAI Medical Tutor - Prompt Demo")
     # Print separator line
@@ -125,7 +133,10 @@ def demo_prompts():
     print("✅ Prompt demo completed!")
 
 def main():
-    """Main demo function"""
+    """
+    Main demo function to showcase all features.
+    Runs the mock test, motivation, and prompt demos in sequence.
+    """
     # Print main demo header
     print("🚀 DrAI Medical Tutor - Feature Demo")
     # Print separator line

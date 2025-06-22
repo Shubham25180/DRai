@@ -1,25 +1,34 @@
 """
 DrAI Medical Tutor - Dataset Preparation Script
-Tools for creating and managing fine-tuning datasets
+Tools for creating and managing fine-tuning datasets for NEET-PG AI tutor
 """
 
-import json
-import pandas as pd
-import os
-from typing import List, Dict, Any
-from datetime import datetime
+# Import required libraries
+import json  # For reading/writing JSON and JSONL files
+import pandas as pd  # For handling CSV files
+import os  # For file operations
+from typing import List, Dict, Any  # For type hints
+from datetime import datetime  # For timestamping
 
 class DatasetPreparator:
+    """
+    Class for preparing, validating, and managing datasets for AI fine-tuning.
+    Supports Q&A, MCQ, summary, and clinical case formats.
+    """
     def __init__(self):
+        # Initialize dataset containers for different entry types
         self.datasets = {
             'qa': [],
             'mcq': [],
             'summary': [],
             'clinical_case': []
         }
-        
+    
     def create_qa_entry(self, question: str, answer: str, topic: str = "") -> Dict[str, str]:
-        """Create a Q&A entry for doubt clearance"""
+        """
+        Create a Q&A entry for doubt clearance.
+        Returns a dictionary in the required format for fine-tuning.
+        """
         return {
             "instruction": f"Q: {question}",
             "input": "",
@@ -30,11 +39,13 @@ class DatasetPreparator:
     
     def create_mcq_entry(self, question: str, options: Dict[str, str], 
                         correct_answer: str, explanation: str, topic: str = "") -> Dict[str, Any]:
-        """Create an MCQ entry with explanation"""
+        """
+        Create an MCQ entry with explanation.
+        Formats the question, options, and explanation for fine-tuning.
+        """
         options_text = "\n".join([f"{k}) {v}" for k, v in options.items()])
         instruction = f"Explain this MCQ:\n{question}\n{options_text}"
         output = f"Correct answer: {correct_answer}\n\nExplanation: {explanation}"
-        
         return {
             "instruction": instruction,
             "input": "",
@@ -44,7 +55,9 @@ class DatasetPreparator:
         }
     
     def create_summary_entry(self, topic: str, summary: str) -> Dict[str, str]:
-        """Create a topic summary entry for notes generation"""
+        """
+        Create a topic summary entry for notes generation.
+        """
         return {
             "instruction": f"Summarize: {topic}",
             "input": "",
@@ -55,7 +68,9 @@ class DatasetPreparator:
     
     def create_clinical_case_entry(self, case: str, diagnosis: str, 
                                  explanation: str, topic: str = "") -> Dict[str, str]:
-        """Create a clinical case entry"""
+        """
+        Create a clinical case entry for fine-tuning.
+        """
         return {
             "instruction": f"Clinical Case: {case}",
             "input": "",
@@ -68,17 +83,18 @@ class DatasetPreparator:
                     instruction_col: str = "instruction",
                     input_col: str = "input", 
                     output_col: str = "output") -> bool:
-        """Convert CSV file to JSONL format"""
+        """
+        Convert a CSV file to JSONL format for fine-tuning.
+        Each row in the CSV becomes a JSON object in the output file.
+        """
         try:
             df = pd.read_csv(csv_file)
-            
             # Validate required columns
             required_cols = [instruction_col, output_col]
             for col in required_cols:
                 if col not in df.columns:
                     print(f"❌ Required column '{col}' not found in CSV")
                     return False
-            
             # Convert to JSONL
             with open(output_file, 'w', encoding='utf-8') as f:
                 for _, row in df.iterrows():
@@ -88,16 +104,17 @@ class DatasetPreparator:
                         "output": str(row[output_col]).strip()
                     }
                     f.write(json.dumps(entry, ensure_ascii=False) + '\n')
-            
             print(f"✅ Successfully converted {csv_file} to {output_file}")
             return True
-            
         except Exception as e:
             print(f"❌ Error converting CSV: {e}")
             return False
     
     def validate_dataset(self, jsonl_file: str) -> Dict[str, Any]:
-        """Validate JSONL dataset format and content"""
+        """
+        Validate a JSONL dataset for required fields and content.
+        Returns statistics and error details.
+        """
         stats = {
             "total_entries": 0,
             "valid_entries": 0,
@@ -106,18 +123,14 @@ class DatasetPreparator:
             "avg_output_length": 0,
             "errors": []
         }
-        
         instruction_lengths = []
         output_lengths = []
-        
         try:
             with open(jsonl_file, 'r', encoding='utf-8') as f:
                 for line_num, line in enumerate(f, 1):
                     stats["total_entries"] += 1
-                    
                     try:
                         entry = json.loads(line.strip())
-                        
                         # Check required fields
                         required_fields = ["instruction", "output"]
                         for field in required_fields:
@@ -125,43 +138,39 @@ class DatasetPreparator:
                                 stats["errors"].append(f"Line {line_num}: Missing '{field}' field")
                                 stats["invalid_entries"] += 1
                                 continue
-                        
                         # Check field types
                         if not isinstance(entry["instruction"], str) or not isinstance(entry["output"], str):
                             stats["errors"].append(f"Line {line_num}: Fields must be strings")
                             stats["invalid_entries"] += 1
                             continue
-                        
                         # Check for empty fields
                         if not entry["instruction"].strip() or not entry["output"].strip():
                             stats["errors"].append(f"Line {line_num}: Empty instruction or output")
                             stats["invalid_entries"] += 1
                             continue
-                        
                         # Record lengths
                         instruction_lengths.append(len(entry["instruction"]))
                         output_lengths.append(len(entry["output"]))
                         stats["valid_entries"] += 1
-                        
                     except json.JSONDecodeError:
                         stats["errors"].append(f"Line {line_num}: Invalid JSON")
                         stats["invalid_entries"] += 1
                         continue
-            
             # Calculate averages
             if instruction_lengths:
                 stats["avg_instruction_length"] = sum(instruction_lengths) / len(instruction_lengths)
             if output_lengths:
                 stats["avg_output_length"] = sum(output_lengths) / len(output_lengths)
-            
             return stats
-            
         except Exception as e:
             print(f"❌ Error validating dataset: {e}")
             return stats
     
     def create_starter_dataset(self) -> None:
-        """Create a starter dataset with sample medical Q&A entries"""
+        """
+        Create a starter dataset with sample medical Q&A, MCQ, and summary entries.
+        Useful for testing and demonstration.
+        """
         starter_data = [
             # Q&A Entries
             self.create_qa_entry(
@@ -179,7 +188,6 @@ class DatasetPreparator:
                 "1. Compensated: BP normal, tachycardia, cool extremities. 2. Progressive: BP drops, oliguria, confusion. 3. Irreversible: refractory hypotension, multi-organ failure, death.",
                 "Emergency Medicine"
             ),
-            
             # MCQ Entries
             self.create_mcq_entry(
                 "Which nerve is damaged in Erb's palsy?",
@@ -195,7 +203,6 @@ class DatasetPreparator:
                 "Troponin I is the most sensitive and specific marker for myocardial injury. It rises 3-4 hours after injury and remains elevated for 7-10 days.",
                 "Cardiology"
             ),
-            
             # Summary Entries
             self.create_summary_entry(
                 "Mechanism of Action of Beta Blockers",
@@ -205,7 +212,6 @@ class DatasetPreparator:
                 "Pathophysiology of Diabetes Mellitus Type 2",
                 "Type 2 DM results from insulin resistance and relative insulin deficiency. Insulin resistance occurs in liver, muscle, and adipose tissue. Pancreatic β-cells initially compensate with hyperinsulinemia but eventually fail. Risk factors include obesity, family history, and physical inactivity."
             ),
-            
             # Clinical Case Entries
             self.create_clinical_case_entry(
                 "21-year-old female presents with fever for 5 days, chills, and rose spots on abdomen. WBC count is low with relative lymphocytosis.",

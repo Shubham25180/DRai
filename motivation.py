@@ -1,5 +1,6 @@
 """
 Daily Motivation Script for Medical Students
+Provides motivational quotes and a continuous motivation service for NEET-PG aspirants.
 """
 
 # Import random library for selecting random quotes
@@ -14,6 +15,10 @@ from datetime import datetime
 from utils import get_motivational_quotes
 
 class MotivationPing:
+    """
+    Class to provide motivational quotes to medical students.
+    Supports single quote display, continuous motivation, and quote history.
+    """
     def __init__(self):
         # Initialize quotes list by getting all motivational quotes
         self.quotes = get_motivational_quotes()
@@ -21,7 +26,10 @@ class MotivationPing:
         self.last_quote_time = None
         
     def get_motivational_quote(self):
-        """Get a random motivational quote"""
+        """
+        Get a random motivational quote with timestamp and type metadata.
+        Returns a dictionary with quote, timestamp, and type.
+        """
         # Select a random quote from the quotes list
         quote = random.choice(self.quotes)
         # Get current timestamp in formatted string
@@ -34,7 +42,10 @@ class MotivationPing:
         }
     
     def display_quote(self):
-        """Display a motivational quote with formatting"""
+        """
+        Display a motivational quote with formatted output.
+        Returns the quote data dictionary.
+        """
         # Get quote data with timestamp
         quote_data = self.get_motivational_quote()
         # Print top separator line
@@ -53,7 +64,10 @@ class MotivationPing:
         return quote_data
     
     def continuous_motivation(self, interval_hours: float = 1.0):
-        """Run continuous motivation pings"""
+        """
+        Run continuous motivation pings at a specified interval (in hours).
+        Prints a new quote every interval until interrupted by the user.
+        """
         # Print startup message
         print("🚀 Starting DrAI-Tutor Motivation Service...")
         # Print information about service frequency
@@ -76,7 +90,10 @@ class MotivationPing:
             print("\n🛑 Motivation service stopped by user.")
     
     def save_quote_history(self, quote_data, filename="motivation_history.json"):
-        """Save quote to history file"""
+        """
+        Save a motivational quote to a history file (JSON format).
+        Appends the quote data to the file for later review.
+        """
         # Try to load existing history file
         try:
             # Open and read existing history file
@@ -86,17 +103,18 @@ class MotivationPing:
         except FileNotFoundError:
             # If file doesn't exist, start with empty list
             history = []
-        
         # Add new quote data to history list
         history.append(quote_data)
-        
         # Save updated history back to file
         with open(filename, 'w') as f:
             # Write history as formatted JSON
             json.dump(history, f, indent=2)
 
 def main():
-    """Main function to run motivation service"""
+    """
+    Main function to run the motivation service.
+    Allows user to choose between single quote, hourly, or 30-minute intervals.
+    """
     # Create instance of MotivationPing class
     motivator = MotivationPing()
     

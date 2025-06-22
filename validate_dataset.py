@@ -1,30 +1,33 @@
 """
 Standalone Dataset Validation Script
-Run this to check your JSONL dataset format and get statistics
+Run this to check your JSONL dataset format and get statistics for NEET-PG AI fine-tuning.
 """
 
-import json
-import os
+import json  # For reading JSONL files
+import os    # For file existence checks
 
 def validate_dataset(jsonl_file):
-    """Validate JSONL dataset format and content"""
+    """
+    Validate JSONL dataset format and content for fine-tuning.
+    Checks for required fields, types, and provides statistics.
+    """
     if not os.path.exists(jsonl_file):
         print(f"❌ File not found: {jsonl_file}")
         return
     
     stats = {
-        "total_entries": 0,
-        "valid_entries": 0,
-        "invalid_entries": 0,
-        "avg_instruction_length": 0,
-        "avg_output_length": 0,
-        "topics": set(),
-        "types": set(),
-        "errors": []
+        "total_entries": 0,         # Total number of lines/entries
+        "valid_entries": 0,         # Number of valid entries
+        "invalid_entries": 0,       # Number of invalid entries
+        "avg_instruction_length": 0,# Average length of instruction field
+        "avg_output_length": 0,     # Average length of output field
+        "topics": set(),            # Set of unique topics
+        "types": set(),             # Set of unique entry types
+        "errors": []                # List of error messages
     }
     
-    instruction_lengths = []
-    output_lengths = []
+    instruction_lengths = []  # List to store instruction lengths
+    output_lengths = []       # List to store output lengths
     
     try:
         with open(jsonl_file, 'r', encoding='utf-8') as f:
@@ -33,7 +36,6 @@ def validate_dataset(jsonl_file):
                 
                 try:
                     entry = json.loads(line.strip())
-                    
                     # Check required fields
                     required_fields = ["instruction", "output"]
                     for field in required_fields:
@@ -41,50 +43,44 @@ def validate_dataset(jsonl_file):
                             stats["errors"].append(f"Line {line_num}: Missing '{field}' field")
                             stats["invalid_entries"] += 1
                             continue
-                    
                     # Check field types
                     if not isinstance(entry["instruction"], str) or not isinstance(entry["output"], str):
                         stats["errors"].append(f"Line {line_num}: Fields must be strings")
                         stats["invalid_entries"] += 1
                         continue
-                    
                     # Check for empty fields
                     if not entry["instruction"].strip() or not entry["output"].strip():
                         stats["errors"].append(f"Line {line_num}: Empty instruction or output")
                         stats["invalid_entries"] += 1
                         continue
-                    
                     # Record lengths
                     instruction_lengths.append(len(entry["instruction"]))
                     output_lengths.append(len(entry["output"]))
-                    
-                    # Record topics and types
+                    # Record topics and types if present
                     if "topic" in entry:
                         stats["topics"].add(entry["topic"])
                     if "type" in entry:
                         stats["types"].add(entry["type"])
-                    
                     stats["valid_entries"] += 1
-                    
                 except json.JSONDecodeError:
                     stats["errors"].append(f"Line {line_num}: Invalid JSON")
                     stats["invalid_entries"] += 1
                     continue
-        
         # Calculate averages
         if instruction_lengths:
             stats["avg_instruction_length"] = sum(instruction_lengths) / len(instruction_lengths)
         if output_lengths:
             stats["avg_output_length"] = sum(output_lengths) / len(output_lengths)
-        
         return stats
-        
     except Exception as e:
         print(f"❌ Error validating dataset: {e}")
         return None
 
 def main():
-    """Main validation function"""
+    """
+    Main validation function for DrAI Medical Tutor datasets.
+    Checks starter dataset and template, prints statistics and guidance.
+    """
     print("🧠 DrAI Medical Tutor - Dataset Validation")
     print("="*50)
     
