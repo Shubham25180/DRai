@@ -1,0 +1,6 @@
+instruction,input,output,topic,type
+"Q: What is the treatment for hypertension?","","First-line: thiazide diuretics, ACE inhibitors, ARBs, or calcium channel blockers. Lifestyle modifications include salt restriction, exercise, and weight loss.","Cardiology","qa"
+"Q: How do you diagnose appendicitis?","","Clinical diagnosis with right lower quadrant pain, rebound tenderness, and elevated WBC. CT scan confirms diagnosis. Treatment is appendectomy.","Surgery","qa"
+"Explain this MCQ:\nWhich vitamin deficiency causes night blindness?\nA) Vitamin A\nB) Vitamin B12\nC) Vitamin C\nD) Vitamin D","","Correct answer: A\n\nExplanation: Vitamin A deficiency causes night blindness (nyctalopia) due to impaired rhodopsin synthesis in the retina.","Ophthalmology","mcq"
+"Summarize: Pathophysiology of Heart Failure","","Heart failure results from impaired cardiac output due to systolic or diastolic dysfunction. Compensatory mechanisms include neurohormonal activation, ventricular remodeling, and fluid retention.","Cardiology","summary"
+"Clinical Case: 25-year-old female with fever, sore throat, and lymphadenopathy. Monospot test positive.","","Diagnosis: Infectious mononucleosis\n\nExplanation: Classic presentation of EBV infection. Treatment is supportive. Avoid contact sports due to splenomegaly risk.","Infectious Diseases","clinical_case" 

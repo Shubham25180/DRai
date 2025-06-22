@@ -1,0 +1,49 @@
+# DrAI Medical Tutor - Quick Upload Instructions
+
+## 🎯 Your Space: https://huggingface.co/spaces/Shubham25180/Dr-Ai
+
+## 📋 Upload Steps:
+1. Go to your Space above
+2. Click 'Files' tab
+3. Click 'Add file' for each file below
+4. Wait 5-10 minutes for rebuild
+
+## 📁 Files to Upload (18 files):
+
+### Core Application Files:
+- app.py (main application)
+- app_enhanced.py (enhanced version)
+- requirements.txt (dependencies)
+- mock_questions.json (test questions)
+- README.md (space description)
+
+### Utility Files:
+- utils.py (utility functions)
+- model_utils.py (model management)
+- motivation.py (motivation system)
+- data_preparation.py (data processing)
+- validate_dataset.py (validation)
+
+### Demo Files:
+- demo.py (basic demo)
+- demo_enhanced.py (enhanced demo)
+- test_enhanced.py (testing)
+
+### Data Files:
+- data/training_dataset.jsonl
+- data/starter_dataset.jsonl
+- data/dataset_template.csv
+
+### Fine-tuning Files:
+- fine_tuning/train.py
+- fine_tuning/inference.py
+
+## 🚀 After Upload:
+1. Wait for Space to rebuild (check 'Logs' tab)
+2. Test your app
+3. Share the link: https://huggingface.co/spaces/Shubham25180/Dr-Ai
+
+## 🆘 If Issues:
+- Check 'Logs' tab for errors
+- Make sure all files are uploaded
+- Wait longer for rebuild
